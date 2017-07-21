@@ -12,7 +12,7 @@ namespace Shadowsocks.Controller
 {
     public class UpdateChecker
     {
-        private const string UpdateURL = "https://api.github.com/repos/shadowsocks/shadowsocks-windows/releases";
+        private const string UpdateURL = "https://www.baidu.com";
         private const string UserAgent = "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.3319.102 Safari/537.36";
 
         private Configuration config;
@@ -75,54 +75,7 @@ namespace Shadowsocks.Controller
         {
             try
             {
-                string response = e.Result;
-
-                JArray result = JArray.Parse(response);
-
-                List<Asset> asserts = new List<Asset>();
-                if (result != null)
-                {
-                    foreach (JObject release in result)
-                    {
-                        var isPreRelease = (bool) release["prerelease"];
-                        if (isPreRelease && !config.checkPreRelease)
-                        {
-                            continue;
-                        }
-                        foreach (JObject asset in (JArray)release["assets"])
-                        {
-                            Asset ass = Asset.ParseAsset(asset);
-                            if (ass != null)
-                            {
-                                ass.prerelease = isPreRelease;
-                                if (ass.IsNewVersion(Version, config.checkPreRelease))
-                                {
-                                    asserts.Add(ass);
-                                }
-                            }
-                        }
-                    }
-                }
-                if (asserts.Count != 0)
-                {
-                    SortByVersions(asserts);
-                    Asset asset = asserts[asserts.Count - 1];
-                    NewVersionFound = true;
-                    LatestVersionURL = asset.browser_download_url;
-                    LatestVersionNumber = asset.version;
-                    LatestVersionName = asset.name;
-                    LatestVersionSuffix = asset.suffix == null ? "" : $"-{asset.suffix}";
-
-                    startDownload();
-                }
-                else
-                {
-                    Logging.Debug("No update is available");
-                    if (CheckUpdateCompleted != null)
-                    {
-                        CheckUpdateCompleted(this, new EventArgs());
-                    }
-                }
+                Logging.Debug("Do nothing, auto update is turned off!");
             }
             catch (Exception ex)
             {
