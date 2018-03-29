@@ -240,19 +240,9 @@ namespace Shadowsocks.Controller
             }
         }
 
-        public void DisableProxy()
+        public void SaveProxy(ProxyConfig proxyConfig)
         {
-            _config.proxy.useProxy = false;
-            SaveConfig(_config);
-        }
-
-        public void EnableProxy(int type, string proxy, int port, int timeout)
-        {
-            _config.proxy.useProxy = true;
-            _config.proxy.proxyType = type;
-            _config.proxy.proxyServer = proxy;
-            _config.proxy.proxyPort = port;
-            _config.proxy.proxyTimeout = timeout;
+            _config.proxy = proxyConfig;
             SaveConfig(_config);
         }
 
@@ -363,7 +353,7 @@ namespace Shadowsocks.Controller
                 url = string.Format(
                     "{0}@{1}:{2}/?plugin={3}",
                     websafeBase64,
-                    HttpUtility.UrlEncode(server.server, Encoding.UTF8),
+                    server.FormatHostName(server.server),
                     server.server_port,
                     HttpUtility.UrlEncode(pluginPart, Encoding.UTF8));
             }
@@ -490,8 +480,6 @@ namespace Shadowsocks.Controller
 
         protected void Reload()
         {
-            StopPlugins();
-
             Encryption.RNG.Reload();
             // some logic in configuration updated the config when saving, we need to read it again
             _config = Configuration.Load();
@@ -521,6 +509,9 @@ namespace Shadowsocks.Controller
             {
                 _listener.Stop();
             }
+
+            StopPlugins();
+
             // don't put PrivoxyRunner.Start() before pacServer.Stop()
             // or bind will fail when switching bind address from 0.0.0.0 to 127.0.0.1
             // though UseShellExecute is set to true now
@@ -534,7 +525,7 @@ namespace Shadowsocks.Controller
                     strategy.ReloadServers();
                 }
 
-                StartPlugins();
+                StartPlugin();
                 privoxyRunner.Start(_config);
 
                 TCPRelay tcpRelay = new TCPRelay(this, _config);
@@ -572,13 +563,10 @@ namespace Shadowsocks.Controller
             Utils.ReleaseMemory(true);
         }
 
-        private void StartPlugins()
+        private void StartPlugin()
         {
-            foreach (var server in _config.configs)
-            {
-                // Early start plugin processes
-                GetPluginLocalEndPointIfConfigured(server);
-            }
+            var server = _config.GetCurrentServer();
+            GetPluginLocalEndPointIfConfigured(server);
         }
 
         protected void SaveConfig(Configuration newConfig)
@@ -612,46 +600,14 @@ namespace Shadowsocks.Controller
         private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
         private void pacServer_UserRuleFileChanged(object sender, EventArgs e)
         {
-            // TODO: this is a dirty hack. (from code GListUpdater.http_DownloadStringCompleted())
             if (!File.Exists(Utils.GetTempPath("gfwlist.txt")))
             {
                 UpdatePACFromGFWList();
-                return;
-            }
-            List<string> lines = new List<string>();
-            if (File.Exists(PACServer.USER_RULE_FILE))
-            {
-                string local = FileManager.NonExclusiveReadAllText(PACServer.USER_RULE_FILE, Encoding.UTF8);
-                using (var sr = new StringReader(local))
-                {
-                    foreach (var rule in sr.NonWhiteSpaceLines())
-                    {
-                        if (rule.BeginWithAny(IgnoredLineBegins))
-                            continue;
-                        lines.Add(rule);
-                    }
-                }
-            }
-            lines.AddRange(GFWListUpdater.ParseResult(FileManager.NonExclusiveReadAllText(Utils.GetTempPath("gfwlist.txt"))));
-            string abpContent;
-            if (File.Exists(PACServer.USER_ABP_FILE))
-            {
-                abpContent = FileManager.NonExclusiveReadAllText(PACServer.USER_ABP_FILE, Encoding.UTF8);
             }
             else
             {
-                abpContent = Utils.UnGzip(Resources.abp_js);
+                GFWListUpdater.MergeAndWritePACFile(FileManager.NonExclusiveReadAllText(Utils.GetTempPath("gfwlist.txt")));
             }
-            abpContent = abpContent.Replace("__RULES__", JsonConvert.SerializeObject(lines, Formatting.Indented));
-            if (File.Exists(PACServer.PAC_FILE))
-            {
-                string original = FileManager.NonExclusiveReadAllText(PACServer.PAC_FILE, Encoding.UTF8);
-                if (original == abpContent)
-                {
-                    return;
-                }
-            }
-            File.WriteAllText(PACServer.PAC_FILE, abpContent, Encoding.UTF8);
         }
 
         public void CopyPacUrl()
