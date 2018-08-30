@@ -26,6 +26,7 @@ namespace Shadowsocks.Model
         public string method;
         public string plugin;
         public string plugin_opts;
+        public string plugin_args;
         public string remarks;
         public int timeout;
 
@@ -72,6 +73,7 @@ namespace Shadowsocks.Model
             method = "aes-256-cfb";
             plugin = "";
             plugin_opts = "";
+            plugin_args = "";
             password = "";
             remarks = "";
             timeout = DefaultServerTimeoutSec;
@@ -111,7 +113,7 @@ namespace Shadowsocks.Model
 
         public static List<Server> GetServers(string ssURL)
         {
-            var serverUrls = ssURL.Split('\r', '\n');
+            var serverUrls = ssURL.Split('\r', '\n', ' ');
 
             List<Server> servers = new List<Server>();
             foreach (string serverUrl in serverUrls)

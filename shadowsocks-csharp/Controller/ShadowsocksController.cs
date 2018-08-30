@@ -89,9 +89,13 @@ namespace Shadowsocks.Controller
             StartTrafficStatistics(61);
         }
 
-        public void Start()
+        public void Start(bool regHotkeys = true)
         {
             Reload();
+            if (regHotkeys)
+            {
+                HotkeyReg.RegAllHotkeys();
+            }
         }
 
         protected void ReportError(Exception e)
@@ -175,10 +179,11 @@ namespace Shadowsocks.Controller
             return plugin.LocalEndPoint;
         }
 
-        public void SaveServers(List<Server> servers, int localPort)
+        public void SaveServers(List<Server> servers, int localPort, bool portableMode)
         {
             _config.configs = servers;
             _config.localPort = localPort;
+            _config.portableMode = portableMode;
             Configuration.Save(_config);
         }
 
@@ -250,7 +255,8 @@ namespace Shadowsocks.Controller
         {
             _config.isVerboseLogging = enabled;
             SaveConfig(_config);
-            if ( VerboseLoggingStatusChanged != null ) {
+            if (VerboseLoggingStatusChanged != null)
+            {
                 VerboseLoggingStatusChanged(this, new EventArgs());
             }
         }
@@ -656,7 +662,7 @@ namespace Shadowsocks.Controller
             {
                 previous = trafficPerSecondQueue.Last();
                 current = new TrafficPerSecond();
-                
+
                 current.inboundCounter = InboundCounter;
                 current.outboundCounter = OutboundCounter;
                 current.inboundIncreasement = current.inboundCounter - previous.inboundCounter;
